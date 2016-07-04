@@ -17,20 +17,24 @@ main = do
     opts <- foldl (>>=) (return startOptions) actions
     let Options { optInput = input
                 , processInput = proc
+                , find = find
                 , optOutput = output } = opts
-    input >>= output.proc
-    --print args
-    --
+    input >>= output.hexDump find.proc
+    BL.pack [0x1b,0x5b, 0x31, 0x3b, 0x33, 0x33, 0x6d] |> BL.writeFile "test.bin"
+    BL.pack [0x1b,0x5b, 0x30, 0x6d] |> BL.writeFile "reset.bin"
+
 
 data Options = Options  { optInput :: IO BL.ByteString
                         , processInput :: BL.ByteString -> BL.ByteString
-                        , optOutput :: BL.ByteString -> IO()
+                        , find :: [(BL.ByteString, SGR)]
+                        , optOutput :: String -> IO()
                         }
 
 
 startOptions = Options  { optInput = BL.getContents
                         , processInput = id
-                        , optOutput = print.concat.map (flip showHex " ").BL.unpack
+                        , find = []
+                        , optOutput = print
                         }
     
 options :: [ OptDescr ( Options -> IO Options ) ]
@@ -42,7 +46,7 @@ options =
         "Input file"
     , Option "o" ["output"]
         (ReqArg
-            (\arg opt -> return opt { optOutput = BL.writeFile arg })
+            (\arg opt -> return opt { optOutput = writeFile arg })
             "FILE")
         "Output file"
 
@@ -92,7 +96,8 @@ version = putStrLn "Haskell hex-find 0.1"
 exit = exitWith ExitSuccess
 
 
-
+hexDump :: [(BL.ByteString, SGR)] -> BL.ByteString -> String
+hexDump _ = concat.map (flip showHex " ").BL.unpack
 -- hexDump d cols = d |> splitAt cols |> map (\(x,y) -> [hexLine x cols, hexDump y cols]) 
 
 -- hexLine d cols = 
